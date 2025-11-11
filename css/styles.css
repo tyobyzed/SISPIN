@@ -1,0 +1,230 @@
+/* Enhanced Styles with Security and Performance Optimizations */
+body {
+    box-sizing: border-box;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.card-hover {
+    transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+/* Login Animations */
+.login-container {
+    animation: slideInUp 0.8s ease-out;
+}
+
+@keyframes slideInUp {
+    from { 
+        opacity: 0; 
+        transform: translateY(50px) scale(0.95); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+    }
+}
+
+.floating-animation {
+    animation: floating 3s ease-in-out infinite;
+}
+
+@keyframes floating {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGlow {
+    from { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+    to { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+}
+
+.gradient-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.glass-effect {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.input-focus {
+    transition: all 0.3s ease;
+}
+
+.input-focus:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
+}
+
+.demo-card {
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
+}
+
+.demo-card:hover {
+    transform: scale(1.02);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(147, 51, 234, 0.2) 100%);
+}
+
+/* Virtual Scrolling Styles */
+.virtual-scroll-container {
+    height: 400px;
+    overflow-y: auto;
+    position: relative;
+}
+
+.virtual-scroll-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.virtual-scroll-item {
+    height: 60px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Notification Styles */
+.notification {
+    min-width: 300px;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.notification.success {
+    background-color: #10b981;
+    color: white;
+}
+
+.notification.error {
+    background-color: #ef4444;
+    color: white;
+}
+
+.notification.warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.notification.info {
+    background-color: #3b82f6;
+    color: white;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Security: Hidden for screen readers but accessible */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Performance: Hardware acceleration */
+.accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .notification {
+        min-width: 250px;
+        font-size: 14px;
+    }
+    
+    .virtual-scroll-container {
+        height: 300px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: linear-gradient(to br, #1a1a2e, #16213e, #0f3460);
+    }
+    
+    .glass-effect {
+        background: rgba(30, 30, 30, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .input-focus {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .card-hover {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+    }
+}
