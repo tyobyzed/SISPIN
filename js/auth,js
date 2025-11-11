@@ -1,0 +1,362 @@
+/**
+ * Authentication and Authorization Module
+ * Handles user login, logout, and role-based access control
+ */
+
+const AuthService = {
+    // User accounts and roles
+    users: {
+        'admin': { password: 'admin123', role: 'admin', name: 'Administrator' },
+        'kepsek': { password: 'kepsek123', role: 'kepsek', name: 'Kepala Sekolah' },
+        'guru': { password: 'guru123', role: 'guru', name: 'Guru Matematika' },
+        'bk': { password: 'bk123', role: 'bk', name: 'Guru BK' },
+        'siswa': { password: 'siswa123', role: 'siswa', name: 'Siswa/Orang Tua' }
+    },
+
+    // Page permissions
+    permissions: {
+        admin: ['beranda', 'intra', 'kokurikuler', 'wali', 'jurnal', 'bk', 'manajemen'],
+        kepsek: ['beranda', 'persetujuan'],
+        guru: ['beranda', 'intra', 'kokurikuler', 'wali', 'jurnal'],
+        bk: ['beranda', 'intra', 'kokurikuler', 'wali', 'jurnal', 'bk'],
+        siswa: ['beranda', 'intra', 'kokurikuler', 'wali', 'jurnal', 'bk']
+    },
+
+    // Current user state
+    currentUser: null,
+    sessionTimer: null,
+
+    /**
+     * Initialize authentication service
+     */
+    init() {
+        this.checkExistingSession();
+        this.setupEventListeners();
+        this.startSessionTimer();
+    },
+
+    /**
+     * Check for existing session
+     */
+    checkExistingSession() {
+        try {
+            const sessionData = localStorage.getItem('sispin_session');
+            if (sessionData) {
+                const session = JSON.parse(sessionData);
+                if (this.validateSession(session)) {
+                    this.currentUser = session.user;
+                    this.showMainApp();
+                } else {
+                    this.clearSession();
+                }
+            }
+        } catch (error) {
+            console.error('Session check error:', error);
+            this.clearSession();
+        }
+    },
+
+    /**
+     * Validate session
+     */
+    validateSession(session) {
+        if (!session || !session.user || !session.timestamp) return false;
+        
+        const now = Date.now();
+        const sessionTimeout = AppConfig.get('session_timeout');
+        
+        return (now - session.timestamp) < sessionTimeout;
+    },
+
+    /**
+     * Setup event listeners
+     */
+    setupEventListeners() {
+        // Login form
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+        }
+
+        // Logout button
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => this.logout());
+        }
+
+        // Session timeout warning
+        window.addEventListener('beforeunload', () => {
+            if (this.currentUser) {
+                this.saveSession();
+            }
+        });
+    },
+
+    /**
+     * Handle login
+     */
+    async handleLogin(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const credentials = {
+            role: formData.get('role'),
+            username: SecurityService.sanitizeInput(formData.get('username')),
+            password: formData.get('password')
+        };
+
+        // Validate input
+        if (!this.validateCredentials(credentials)) {
+            this.showLoginError('Role, username, atau password tidak valid!');
+            return;
+        }
+
+        // Check login attempts
+        const attempts = this.getLoginAttempts(credentials.username);
+        if (attempts >= AppConfig.get('security.max_login_attempts')) {
+            this.showLoginError('Terlalu banyak percobaan login. Coba lagi nanti.');
+            return;
+        }
+
+        // Authenticate user
+        const user = this.authenticate(credentials);
+        if (user) {
+            await this.loginSuccess(user);
+        } else {
+            this.incrementLoginAttempts(credentials.username);
+            this.showLoginError('Role, username, atau password tidak sesuai!');
+        }
+    },
+
+    /**
+     * Validate credentials format
+     */
+    validateCredentials(credentials) {
+        return credentials.role && 
+               credentials.username && 
+               credentials.password &&
+               credentials.username.length >= 3 &&
+               credentials.password.length >= AppConfig.get('security.password_min_length');
+    },
+
+    /**
+     * Authenticate user
+     */
+    authenticate(credentials) {
+        const user = this.users[credentials.username];
+        
+        if (!user || user.role !== credentials.role) {
+            return null;
+        }
+
+        // In production, use proper password hashing
+        if (user.password === credentials.password) {
+            return { username: credentials.username, ...user };
+        }
+
+        return null;
+    },
+
+    /**
+     * Handle successful login
+     */
+    async loginSuccess(user) {
+        this.currentUser = user;
+        
+        // Save session
+        this.saveSession();
+        
+        // Clear login attempts
+        this.clearLoginAttempts(user.username);
+        
+        // Update users from data if needed
+        await DataService.updateUsersFromData();
+        
+        // Show main app
+        this.showMainApp();
+        
+        // Show welcome notification
+        NotificationService.show(
+            `Selamat datang, ${user.name}!`,
+            'success'
+        );
+    },
+
+    /**
+     * Show main application
+     */
+    showMainApp() {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        
+        // Update UI
+        document.getElementById('userInfo').textContent = this.currentUser.name;
+        document.getElementById('userRole').textContent = this.getRoleDisplayName(this.currentUser.role);
+        
+        // Initialize other services
+        UIService.init();
+        DataService.init();
+    },
+
+    /**
+     * Logout user
+     */
+    logout() {
+        this.clearSession();
+        this.currentUser = null;
+        
+        // Clear session timer
+        if (this.sessionTimer) {
+            clearInterval(this.sessionTimer);
+        }
+        
+        // Show login screen
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('mainApp').classList.add('hidden');
+        
+        // Reset form
+        document.getElementById('roleSelect').value = '';
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        
+        // Show notification
+        NotificationService.show('Anda telah keluar dari sistem', 'info');
+    },
+
+    /**
+     * Save session
+     */
+    saveSession() {
+        try {
+            const sessionData = {
+                user: this.currentUser,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('sispin_session', JSON.stringify(sessionData));
+        } catch (error) {
+            console.error('Error saving session:', error);
+        }
+    },
+
+    /**
+     * Clear session
+     */
+    clearSession() {
+        localStorage.removeItem('sispin_session');
+        localStorage.removeItem('sispin_login_attempts');
+    },
+
+    /**
+     * Start session timer
+     */
+    startSessionTimer() {
+        this.sessionTimer = setInterval(() => {
+            if (this.currentUser) {
+                const sessionData = localStorage.getItem('sispin_session');
+                if (sessionData) {
+                    const session = JSON.parse(sessionData);
+                    if (!this.validateSession(session)) {
+                        this.logout();
+                        NotificationService.show('Sesi telah berakhir. Silakan login kembali.', 'warning');
+                    }
+                }
+            }
+        }, 60000); // Check every minute
+    },
+
+    /**
+     * Get login attempts
+     */
+    getLoginAttempts(username) {
+        try {
+            const attempts = JSON.parse(localStorage.getItem('sispin_login_attempts') || '{}');
+            return attempts[username] || 0;
+        } catch (error) {
+            return 0;
+        }
+    },
+
+    /**
+     * Increment login attempts
+     */
+    incrementLoginAttempts(username) {
+        try {
+            const attempts = JSON.parse(localStorage.getItem('sispin_login_attempts') || '{}');
+            attempts[username] = (attempts[username] || 0) + 1;
+            localStorage.setItem('sispin_login_attempts', JSON.stringify(attempts));
+        } catch (error) {
+            console.error('Error incrementing login attempts:', error);
+        }
+    },
+
+    /**
+     * Clear login attempts
+     */
+    clearLoginAttempts(username) {
+        try {
+            const attempts = JSON.parse(localStorage.getItem('sispin_login_attempts') || '{}');
+            delete attempts[username];
+            localStorage.setItem('sispin_login_attempts', JSON.stringify(attempts));
+        } catch (error) {
+            console.error('Error clearing login attempts:', error);
+        }
+    },
+
+    /**
+     * Show login error
+     */
+    showLoginError(message) {
+        const form = document.getElementById('loginForm');
+        let errorMsg = form.querySelector('.error-message');
+        
+        if (!errorMsg) {
+            errorMsg = document.createElement('div');
+            errorMsg.className = 'error-message text-red-600 text-sm mt-2 text-center bg-red-50 border border-red-200 rounded p-2';
+            form.appendChild(errorMsg);
+        }
+        
+        errorMsg.textContent = message;
+        setTimeout(() => errorMsg.remove(), 5000);
+    },
+
+    /**
+     * Check if user has permission for page
+     */
+    hasPermission(pageKey) {
+        if (!this.currentUser) return false;
+        
+        const userPermissions = this.permissions[this.currentUser.role];
+        return userPermissions && userPermissions.includes(pageKey);
+    },
+
+    /**
+     * Get role display name
+     */
+    getRoleDisplayName(role) {
+        const roleNames = {
+            admin: 'Administrator',
+            kepsek: 'Kepala Sekolah',
+            guru: 'Guru',
+            bk: 'Guru BK',
+            siswa: 'Siswa/Orang Tua'
+        };
+        return roleNames[role] || role;
+    },
+
+    /**
+     * Get role icon
+     */
+    getRoleIcon(role) {
+        const roleIcons = {
+            admin: '👨‍💼',
+            kepsek: '🎓',
+            guru: '👩‍🏫',
+            bk: '💬',
+            siswa: '👨‍🎓'
+        };
+        return roleIcons[role] || '👤';
+    }
+};
+
+// Export for use in other modules
+window.AuthService = AuthService;
